@@ -158,7 +158,7 @@ export default function HomePage() {
                     {q.content.length > 100 ? q.content.slice(0, 100) + "..." : q.content}
                   </p>
                   <div className="flex items-center gap-4 text-xs text-gray-400">
-                    <span>{q.user.name}</span>
+                    <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); router.push(`/profile/${q.user.id}`) }} className="text-gray-500 hover:text-blue-600 hover:underline text-xs cursor-pointer">{q.user.name}</button>
                     <span className="flex items-center gap-1">
                       <MessageCircle className="h-3 w-3" /> {q._count.answers}
                     </span>

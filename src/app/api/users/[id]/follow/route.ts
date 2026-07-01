@@ -114,7 +114,25 @@ export async function GET(
     }
 
     const { searchParams } = new URL(request.url)
-    const type = searchParams.get("type") || "followers"
+    const type = searchParams.get("type")
+
+    // If no type specified, check if current user follows this user
+    if (!type) {
+      const session = await getSession()
+      let isFollowing = false
+      if (session) {
+        const follow = await prisma.follow.findUnique({
+          where: {
+            followerId_followingId: {
+              followerId: session.userId,
+              followingId: userId,
+            },
+          },
+        })
+        isFollowing = !!follow
+      }
+      return NextResponse.json({ isFollowing })
+    }
 
     if (type !== "followers" && type !== "following") {
       return NextResponse.json({ error: 'Type must be "followers" or "following"' }, { status: 400 })

@@ -14,6 +14,9 @@ export async function GET(
       return NextResponse.json({ error: "Invalid user ID" }, { status: 400 })
     }
 
+    const { searchParams } = new URL(request.url)
+    const include = searchParams.get("include")
+
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: {
@@ -41,7 +44,20 @@ export async function GET(
       return NextResponse.json({ error: "User not found" }, { status: 404 })
     }
 
-    return NextResponse.json({ user })
+    let extra: Record<string, unknown> = {}
+
+    if (include === "answers") {
+      const answers = await prisma.answer.findMany({
+        where: { userId: userId },
+        include: {
+          question: { select: { id: true, title: true } },
+        },
+        orderBy: { createdAt: "desc" },
+      })
+      extra.answers = answers
+    }
+
+    return NextResponse.json({ user, ...extra })
   } catch (error) {
     console.error("Get user error:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })

@@ -1,9 +1,10 @@
-﻿"use client"
+"use client"
 
 import { useState, useEffect, useCallback } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -66,6 +67,10 @@ export default function ProfilePage() {
   const [resources, setResources] = useState<Resource[]>([])
   const [favorites, setFavorites] = useState<Favorite[]>([])
   const [activeTab, setActiveTab] = useState("questions")
+  const [followDialogOpen, setFollowDialogOpen] = useState(false)
+  const [followDialogType, setFollowDialogType] = useState<"following" | "followers">("following")
+  const [followUsers, setFollowUsers] = useState<{id:number;name:string;avatar:string|null;studentId:string}[]>([])
+  const [followLoading, setFollowLoading] = useState(false)
 
   useEffect(() => {
     fetch("/api/auth/session")
@@ -81,7 +86,7 @@ export default function ProfilePage() {
         user ? fetch(`/api/users/${id}/follow`) : Promise.resolve(null),
       ])
       const pData = await profileRes.json()
-      setProfile(pData)
+      setProfile(pData.user || pData)
       if (followRes) {
         const fData = await followRes.json()
         setIsFollowing(fData.isFollowing || false)
@@ -126,10 +131,22 @@ export default function ProfilePage() {
 
   useEffect(() => { fetchTabData(activeTab) }, [activeTab, fetchTabData])
 
+  const handleShowFollows = async (type: "following" | "followers") => {
+    setFollowDialogType(type);
+    setFollowDialogOpen(true);
+    setFollowLoading(true);
+    try {
+      const res = await fetch(`/api/users/${id}/follow?type=${type}`);
+      const data = await res.json();
+      setFollowUsers(data.users || []);
+    } catch { toast.error("加载失败"); }
+    setFollowLoading(false);
+  }
+
   const handleFollow = async () => {
     if (!user) { toast.error("请先登录"); return }
     try {
-      const res = await fetch(`/api/users/${id}/follow`, { method: "POST" })
+      const res = await fetch(`/api/users/${id}/follow`, { method: isFollowing ? "DELETE" : "POST" })
       if (res.ok) {
         setIsFollowing(!isFollowing)
         toast.success(isFollowing ? "已取消关注" : "已关注")
@@ -178,8 +195,8 @@ export default function ProfilePage() {
               <p className="text-sm text-gray-500">学号: {profile.studentId}</p>
               {profile.bio && <p className="text-sm text-gray-600 mt-1">{profile.bio}</p>}
               <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
-                <span>关注 {profile._count.following}</span>
-                <span>粉丝 {profile._count.followers}</span>
+                <button onClick={() => handleShowFollows("following")} className="text-sm text-gray-600 hover:text-blue-600 hover:underline cursor-pointer">关注 {profile._count.following}</button>
+                <button onClick={() => handleShowFollows("followers")} className="text-sm text-gray-600 hover:text-blue-600 hover:underline cursor-pointer">粉丝 {profile._count.followers}</button>
               </div>
             </div>
             <div className="flex gap-2">
@@ -275,15 +292,14 @@ export default function ProfilePage() {
             ))
           )}
         </TabsContent>
-
         <TabsContent value="favorites" className="space-y-3">
           {favorites.length === 0 ? (
             <p className="text-gray-400 text-center py-8">暂无收藏</p>
           ) : (
-            favorites.map((f, i) => (
+            favorites.map((f) => (
               <Link
                 key={f.id}
-                href={f.question ? `/questions/${f.question.id}` : `#`}
+                href={f.question ? `/questions/${f.question.id}` : "#"}
               >
                 <Card className="hover:shadow-sm transition-shadow">
                   <CardContent className="py-3">
@@ -300,6 +316,36 @@ export default function ProfilePage() {
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Followers/Following Dialog */}
+      <Dialog open={followDialogOpen} onOpenChange={setFollowDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{followDialogType === "following" ? "关注列表" : "粉丝列表"}</DialogTitle>
+          </DialogHeader>
+          <div className="max-h-80 overflow-y-auto">
+            {followLoading ? (
+              <p className="text-center text-gray-400 py-4">加载中...</p>
+            ) : followUsers.length === 0 ? (
+              <p className="text-center text-gray-400 py-4">暂无数据</p>
+            ) : (
+              followUsers.map((u) => (
+                <Link key={u.id} href={`/profile/${u.id}`}>
+                  <div className="flex items-center gap-3 py-2.5 px-1 hover:bg-gray-50 rounded-md cursor-pointer" onClick={() => setFollowDialogOpen(false)}>
+                    <Avatar className="h-9 w-9">
+                      <AvatarFallback>{u.name[0]}</AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">{u.name}</p>
+                      <p className="text-xs text-gray-400">{u.studentId || ""}</p>
+                    </div>
+                  </div>
+                </Link>
+              ))
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

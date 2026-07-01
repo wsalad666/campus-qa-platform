@@ -1,6 +1,30 @@
-﻿import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
 import { getSession } from '@/lib/auth'
+
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params
+    const questionId = parseInt(id, 10)
+
+    const answers = await prisma.answer.findMany({
+      where: { questionId },
+      include: {
+        user: { select: { id: true, name: true, avatar: true } },
+        _count: { select: { likes: true, comments: true } },
+      },
+      orderBy: [{ isAdopted: 'desc' }, { createdAt: 'desc' }],
+    })
+
+    return NextResponse.json({ answers })
+  } catch (error) {
+    console.error('GET /api/questions/[id]/answers error:', error)
+    return NextResponse.json({ error: 'Failed to fetch answers' }, { status: 500 })
+  }
+}
 
 export async function POST(
   request: NextRequest,

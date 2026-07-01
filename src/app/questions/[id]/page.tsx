@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Separator } from "@/components/ui/separator"
-import { MessageCircle, Heart, ThumbsUp, CheckCircle2, ChevronDown, ChevronUp, ArrowLeft } from "lucide-react"
+import { MessageCircle, Heart, Bookmark, ThumbsUp, CheckCircle2, ChevronDown, ChevronUp, ArrowLeft } from "lucide-react"
 import { toast } from "sonner"
 
 interface User {
@@ -106,7 +106,24 @@ export default function QuestionDetailPage() {
     } catch { toast.error("网络错误") }
   }
 
-  const handleLikeAnswer = async (answerId: number) => {
+    const handleFavorite = async () => {
+    if (!user) { toast.error("请先登录"); return }
+    try {
+      if (!question) return
+      const res = await fetch("/api/favorites", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ questionId: question.id }),
+      })
+      if (res.ok) toast.success("已收藏")
+      else {
+        const d = await res.json()
+        toast.error(d.error || "操作失败")
+      }
+    } catch { toast.error("网络错误") }
+  }
+
+const handleLikeAnswer = async (answerId: number) => {
     if (!user) { toast.error("请先登录"); return }
     try {
       const res = await fetch(`/api/answers/${answerId}/like`, { method: "POST" })
@@ -220,13 +237,17 @@ export default function QuestionDetailPage() {
               <h1 className="text-2xl font-bold text-gray-900">{question.title}</h1>
               <div className="flex items-center gap-3 mt-2 text-sm text-gray-500">
                 <Badge variant="secondary">{question.course.name}</Badge>
-                <span>{question.user.name}</span>
+                <Link href={`/profile/${question.user.id}`} className="hover:text-blue-600 hover:underline">{question.user.name}</Link>
                 <span>{timeAgo(question.createdAt)}</span>
               </div>
             </div>
             <Button variant="ghost" size="sm" onClick={handleLikeQuestion} className="gap-1">
               <Heart className={`h-4 w-4 ${user ? "text-red-400" : ""}`} />
               {question._count.likes}
+            </Button>
+            <Button variant="ghost" size="sm" onClick={handleFavorite} className="gap-1">
+              <Bookmark className="h-4 w-4" />
+              收藏
             </Button>
           </div>
         </CardHeader>
@@ -308,7 +329,7 @@ export default function QuestionDetailPage() {
                   <Avatar className="h-7 w-7">
                     <AvatarFallback className="text-xs">{a.user.name[0]}</AvatarFallback>
                   </Avatar>
-                  <span className="font-medium text-sm">{a.user.name}</span>
+                  <Link href={`/profile/${a.user.id}`} className="font-medium text-sm hover:text-blue-600 hover:underline">{a.user.name}</Link>
                   <span className="text-xs text-gray-400">{timeAgo(a.createdAt)}</span>
                 </div>
               </div>
