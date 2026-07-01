@@ -1,0 +1,138 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int        @id @default(autoincrement())
+  studentId String     @unique(map: "sqlite_autoindex_User_1")
+  name      String
+  email     String     @unique(map: "sqlite_autoindex_User_2")
+  password  String
+  avatar    String?
+  bio       String?
+  role      String     @default("user")
+  createdAt DateTime   @default(now())
+  answers   Answer[]
+  comments  Comment[]
+  favorites Favorite[]
+  followers Follow[]   @relation("Following")
+  following Follow[]   @relation("Follower")
+  likes     Like[]
+  questions Question[]
+  resources Resource[]
+}
+
+model Follow {
+  id          Int      @id @default(autoincrement())
+  followerId  Int
+  followingId Int
+  createdAt   DateTime @default(now())
+  following   User     @relation("Following", fields: [followingId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  follower    User     @relation("Follower", fields: [followerId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([followerId, followingId], map: "sqlite_autoindex_Follow_1")
+}
+
+model Course {
+  id          Int        @id @default(autoincrement())
+  name        String
+  code        String     @unique(map: "sqlite_autoindex_Course_1")
+  description String?
+  questions   Question[]
+  resources   Resource[]
+}
+
+model Question {
+  id        Int        @id @default(autoincrement())
+  title     String
+  content   String
+  images    String?
+  courseId  Int
+  userId    Int
+  status    String     @default("active")
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @default(now()) @updatedAt
+  answers   Answer[]
+  comments  Comment[]
+  favorites Favorite[]
+  likes     Like[]
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  course    Course     @relation(fields: [courseId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model Answer {
+  id         Int       @id @default(autoincrement())
+  content    String
+  questionId Int
+  userId     Int
+  isAdopted  Boolean   @default(false)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @default(now()) @updatedAt
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  question   Question  @relation(fields: [questionId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  comments   Comment[]
+  likes      Like[]
+}
+
+model Comment {
+  id         Int       @id @default(autoincrement())
+  content    String
+  questionId Int?
+  answerId   Int?
+  userId     Int
+  createdAt  DateTime  @default(now())
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  answer     Answer?   @relation(fields: [answerId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  question   Question? @relation(fields: [questionId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model Resource {
+  id            Int        @id @default(autoincrement())
+  title         String
+  description   String?
+  filePath      String
+  fileName      String
+  fileSize      Int
+  fileType      String
+  courseId      Int
+  userId        Int
+  downloadCount Int        @default(0)
+  status        String     @default("active")
+  createdAt     DateTime   @default(now())
+  favorites     Favorite[]
+  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  course        Course     @relation(fields: [courseId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model Like {
+  id         Int       @id @default(autoincrement())
+  userId     Int
+  questionId Int?
+  answerId   Int?
+  createdAt  DateTime  @default(now())
+  answer     Answer?   @relation(fields: [answerId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  question   Question? @relation(fields: [questionId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([userId, answerId], map: "sqlite_autoindex_Like_2")
+  @@unique([userId, questionId], map: "sqlite_autoindex_Like_1")
+}
+
+model Favorite {
+  id         Int       @id @default(autoincrement())
+  userId     Int
+  questionId Int?
+  resourceId Int?
+  createdAt  DateTime  @default(now())
+  resource   Resource? @relation(fields: [resourceId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  question   Question? @relation(fields: [questionId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([userId, resourceId], map: "sqlite_autoindex_Favorite_2")
+  @@unique([userId, questionId], map: "sqlite_autoindex_Favorite_1")
+}
